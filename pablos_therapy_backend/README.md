@@ -13,10 +13,6 @@ python3 main.py
 4. Test and see if you get your intended therapy
 
 
-If you are here, check out the Flutter app we made for this
-[Flutter App](https://github.com/PratikFandade/pablos_therapy_ui)
-
-
 ##### Future goals
 1. Provide a system arhitecture
 2. Move the code to Golang for efficient audio transmission over wire
