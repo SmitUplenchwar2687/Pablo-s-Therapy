@@ -10,11 +10,11 @@ Welcome to the Pablo's Therapy App — an interactive mobile app designed to pro
 ## Installation
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/therapy-ai-app.git
+git clone https://github.com/yourusername/Pablo-s-Therapy.git
 ```
 2. Navigate into the directory:
 ```bash
-cd therapy-ai-app
+cd Pablo-s-Therapy
 ```
 3. Install dependencies:
 ```bash
