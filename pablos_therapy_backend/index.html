@@ -1,0 +1,259 @@
+<!--<!DOCTYPE html>-->
+<!--<html lang="en">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8">-->
+<!--    <meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+<!--    <title>Stream WAV Audio</title>-->
+<!--</head>-->
+<!--<body>-->
+<!--    <h1>Stream Audio</h1>-->
+<!---->
+<!--    <audio id="audioPlayer" controls>-->
+<!--        <source id="audioSource" type="audio/wav">-->
+<!--        Your browser does not support the audio element.-->
+<!--    </audio>-->
+<!---->
+<!--    <button onclick="playAudio()">Play Audio</button>-->
+<!---->
+<!--    <script>-->
+<!--        const audioPlayer = document.getElementById('audioPlayer');-->
+<!--        const audioSource = document.getElementById('audioSource');-->
+<!---->
+<!--        function playAudio() {-->
+<!--            // Set the source URL to the FastAPI stream endpoint-->
+<!--            audioSource.src = 'http://127.0.0.1:8000/stream_audio';-->
+<!--            audioPlayer.load();  // Load the new source-->
+<!--            audioPlayer.play();  // Start playing the audio-->
+<!--        }-->
+<!--    </script>-->
+<!--</body>-->
+<!--</html>-->
+<!---->
+
+<!--<!DOCTYPE html>-->
+<!--<html lang="en">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8">-->
+<!--    <meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+<!--    <title>Audio Streaming to Backend</title>-->
+<!--</head>-->
+<!--<body>-->
+<!---->
+<!--<h2>Audio Recording and Transcription</h2>-->
+<!--<button id="startButton">Start Recording</button>-->
+<!--<button id="stopButton" disabled>Stop Recording</button>-->
+<!---->
+<!--<p>Transcription:</p>-->
+<!--<p id="transcription"></p>-->
+<!---->
+<!--<script>-->
+<!--  let audioChunks = [];-->
+<!--  let mediaRecorder;-->
+<!--  let websocket;-->
+<!---->
+<!--  // WebSocket connection to the FastAPI backend-->
+<!--  function connectWebSocket() {-->
+<!--    websocket = new WebSocket("ws://localhost:8080/ws");-->
+<!---->
+<!--    websocket.onopen = () => {-->
+<!--      console.log("Connected to WebSocket.");-->
+<!--    };-->
+<!---->
+<!--    websocket.onmessage = (event) => {-->
+<!--      const transcription = event.data;-->
+<!--      document.getElementById("transcription").innerText = transcription;-->
+<!--    };-->
+<!---->
+<!--    websocket.onerror = (error) => {-->
+<!--      console.log("WebSocket error: ", error);-->
+<!--    };-->
+<!--  }-->
+<!---->
+<!--  // Start recording audio from the microphone-->
+<!--  document.getElementById("startButton").onclick = async () => {-->
+<!--    try {-->
+<!--      // Request access to the user's microphone-->
+<!--      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });-->
+<!--      mediaRecorder = new MediaRecorder(stream);-->
+<!---->
+<!--      // Capture audio data chunks-->
+<!--      mediaRecorder.ondataavailable = (event) => {-->
+<!--        audioChunks.push(event.data);-->
+<!--        sendAudioChunk(event.data);-->
+<!--      };-->
+<!---->
+<!--      // Start recording-->
+<!--      mediaRecorder.start();-->
+<!--      document.getElementById("startButton").disabled = true;-->
+<!--      document.getElementById("stopButton").disabled = false;-->
+<!--      console.log("Recording started...");-->
+<!---->
+<!--      // Connect to WebSocket once recording starts-->
+<!--      connectWebSocket();-->
+<!---->
+<!--    } catch (error) {-->
+<!--      console.error("Error accessing microphone: ", error);-->
+<!--    }-->
+<!--  };-->
+<!---->
+<!--  // Stop recording and send the final audio data-->
+<!--  document.getElementById("stopButton").onclick = () => {-->
+<!--    mediaRecorder.stop();-->
+<!--    //sendAudioChunk(audioChunks);-->
+<!--    document.getElementById("startButton").disabled = false;-->
+<!--    document.getElementById("stopButton").disabled = true;-->
+<!--    console.log("Recording stopped...");-->
+<!--  };-->
+<!---->
+<!--  // Send the audio chunk to the WebSocket server-->
+<!--  function sendAudioChunk(audioBlob) {-->
+<!--    // Convert the Blob to ArrayBuffer (binary data)-->
+<!--    const reader = new FileReader();-->
+<!--    reader.onloadend = () => {-->
+<!--      const audioData = reader.result;-->
+<!--      if (websocket && websocket.readyState === WebSocket.OPEN) {-->
+<!--        websocket.send(audioData);-->
+<!--      }-->
+<!--    };-->
+<!--    reader.readAsArrayBuffer(audioBlob);-->
+<!--  }-->
+<!--</script>-->
+<!---->
+<!--</body>-->
+<!--</html>-->
+<!---->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recording and Transcription</title>
+</head>
+<body>
+
+<h2>Audio Recording and Transcription</h2>
+<button id="startButton">Start Recording</button>
+<button id="stopButton" disabled>Stop Recording</button>
+
+<p>Transcription:</p>
+<p id="transcription"></p>
+
+<script>
+  let audioChunks = [];
+  let mediaRecorder;
+  let websocket;
+  let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const fromSampleRate = audioContext.sampleRate;  // e.g., 44100 or 48000
+  const toSampleRate = 16000;  // Target sample rate (e.g., 16kHz)
+
+  // WebSocket connection to the backend
+  function connectWebSocket() {
+    websocket = new WebSocket("ws://localhost:8080/ws");
+
+    websocket.onopen = () => {
+      console.log("Connected to WebSocket.");
+    };
+
+    websocket.onmessage = (event) => {
+      const transcription = event.data;
+      document.getElementById("transcription").innerText = transcription;
+    };
+
+    websocket.onerror = (error) => {
+      console.log("WebSocket error: ", error);
+    };
+
+    websocket.onclose = () => {
+      console.log("WebSocket connection closed.");
+    };
+  }
+
+  // Start recording audio from the microphone
+  document.getElementById("startButton").onclick = async () => {
+    try {
+      // Request access to the user's microphone
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+
+      // Capture audio data chunks
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+        processAndSendAudio(event.data);
+      };
+
+      // Start recording
+      mediaRecorder.start();
+      document.getElementById("startButton").disabled = true;
+      document.getElementById("stopButton").disabled = false;
+      console.log("Recording started...");
+
+      // Connect to WebSocket once recording starts
+      connectWebSocket();
+
+    } catch (error) {
+      console.error("Error accessing microphone: ", error);
+    }
+  };
+
+  // Stop recording and send the final audio data
+  document.getElementById("stopButton").onclick = () => {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+      mediaRecorder.stop();
+      document.getElementById("startButton").disabled = false;
+      document.getElementById("stopButton").disabled = true;
+      console.log("Recording stopped...");
+    }
+  };
+
+  // Function to downsample audio from one sample rate to another
+  function downsampleAudio(inputBuffer, fromSampleRate, toSampleRate) {
+    const offlineContext = new OfflineAudioContext(
+      inputBuffer.numberOfChannels,
+      inputBuffer.length,
+      toSampleRate
+    );
+    
+    // Create a buffer source from the input
+    const bufferSource = offlineContext.createBufferSource();
+    bufferSource.buffer = inputBuffer;
+    
+    // Connect the buffer source to the offline context's destination
+    bufferSource.connect(offlineContext.destination);
+    bufferSource.start(0);
+    
+    // Start processing the downsampled audio
+    return new Promise((resolve) => {
+      offlineContext.startRendering();
+      offlineContext.oncomplete = (e) => {
+        resolve(e.renderedBuffer);
+      };
+    });
+  }
+
+  // Process the audio chunk and downsample it before sending it over WebSocket
+  function processAndSendAudio(audioBlob) {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const audioData = reader.result;
+      const audioBuffer = await audioContext.decodeAudioData(audioData);
+      
+      // Downsample the audio buffer
+      const downsampledBuffer = await downsampleAudio(audioBuffer, fromSampleRate, toSampleRate);
+      
+      // Convert the downsampled buffer to an ArrayBuffer
+      downsampledBuffer.copyToChannel(downsampledBuffer.getChannelData(0), 0);
+      const downsampledAudioData = downsampledBuffer.getChannelData(0);
+
+      // Send the downsampled audio data over WebSocket
+      if (websocket && websocket.readyState === WebSocket.OPEN) {
+        websocket.send(downsampledAudioData.buffer);
+      }
+    };
+    reader.readAsArrayBuffer(audioBlob);
+  }
+</script>
+
+</body>
+</html>
+

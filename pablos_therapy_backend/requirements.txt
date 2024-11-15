@@ -1,0 +1,11 @@
+elevenlabs
+openai
+fastapi
+uvicorn
+pydub
+pymongo
+nest_asyncio
+SpeechRecognition
+pydantic
+
+

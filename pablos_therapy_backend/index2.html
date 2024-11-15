@@ -1,0 +1,263 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Streaming to Backend</title>
+</head>
+<body>
+
+<h2>Audio Recording and Transcription</h2>
+<button id="startButton">Start Recording</button>
+<button id="stopButton" disabled>Stop Recording</button>
+
+<p>Transcription:</p>
+<p id="transcription"></p>
+
+<script>
+  let audioChunks = [];
+  let mediaRecorder;
+  let websocket;
+
+  // WebSocket connection to the FastAPI backend
+  function connectWebSocket() {
+    websocket = new WebSocket("ws://localhost:8000/ws/chat");
+    
+    websocket.onopen = () => {
+      console.log("Connected to WebSocket.");
+    };
+
+    websocket.onmessage = (event) => {
+      const transcription = event.data;
+      document.getElementById("transcription").innerText = transcription;
+    };
+
+    websocket.onerror = (error) => {
+      console.log("WebSocket error: ", error);
+    };
+  }
+
+  // Start recording audio from the microphone
+  document.getElementById("startButton").onclick = async () => {
+    try {
+      // Request access to the user's microphone
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+
+      // Capture audio data chunks
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+        sendAudioChunk(event.data);
+      };
+
+      // Start recording
+      mediaRecorder.start();
+      document.getElementById("startButton").disabled = true;
+      document.getElementById("stopButton").disabled = false;
+      console.log("Recording started...");
+
+      // Connect to WebSocket once recording starts
+      connectWebSocket();
+
+    } catch (error) {
+      console.error("Error accessing microphone: ", error);
+    }
+  };
+
+  // Stop recording and send the final audio data
+  document.getElementById("stopButton").onclick = () => {
+    mediaRecorder.stop();
+    //sendAudioChunk(audioChunks);
+    document.getElementById("startButton").disabled = false;
+    document.getElementById("stopButton").disabled = true;
+    console.log("Recording stopped...");
+  };
+
+  // Send the audio chunk to the WebSocket server
+  function sendAudioChunk(audioBlob) {
+    // Convert the Blob to ArrayBuffer (binary data)
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const audioData = reader.result;
+      if (websocket && websocket.readyState === WebSocket.OPEN) {
+              console.log("sent")
+        websocket.send(audioData);
+      }
+    };
+    reader.readAsArrayBuffer(audioBlob);
+  }
+</script>
+
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recording and Transcription</title>
+</head>
+<body>
+
+<h2>Audio Recording and Transcription</h2>
+<button id="startButton">Start Recording</button>
+<button id="stopButton" disabled>Stop Recording</button>
+
+<p>Transcription:</p>
+<p id="transcription"></p>
+
+<script>
+  let audioChunks = [];
+  let mediaRecorder;
+  let websocket;
+
+  // WebSocket connection to the FastAPI backend
+  function connectWebSocket() {
+    websocket = new WebSocket("ws://localhost:8000/ws/chat");
+    
+    websocket.onopen = () => {
+      console.log("Connected to WebSocket.");
+    };
+
+    websocket.onmessage = (event) => {
+      const transcription = event.data;
+      document.getElementById("transcription").innerText = transcription;
+      const audioBlob = new Blob([event.data], { type: 'audio/wav' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audio.play();
+    };
+
+    websocket.onerror = (error) => {
+      console.log("WebSocket error: ", error);
+    };
+
+  }
+
+  // Start recording audio from the microphone
+  document.getElementById("startButton").onclick = async () => {
+      // Request access to the user's microphone
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Try setting the MIME type to 'audio/wav' if the browser supports it
+      const options = { mimeType: 'audio/mp3' };  // Set to 'audio/webm' if wav is not supported
+      mediaRecorder = new MediaRecorder(stream);
+
+      // Capture audio data chunks
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+      };
+
+      // When recording stops, create an audio blob and send it to the WebSocket server
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks);
+        console.log("Audio Blob created:", audioBlob);
+
+        sendAudioBlob(audioBlob);  // Send audio as Blob through WebSocket
+        audioChunks = [];
+      };
+
+      // Start recording
+      mediaRecorder.start();
+      document.getElementById("startButton").disabled = true;
+      document.getElementById("stopButton").disabled = false;
+      console.log("Recording started...");
+
+      // Connect to WebSocket once recording starts
+      connectWebSocket();
+
+};
+
+  // Stop recording
+  document.getElementById("stopButton").onclick = () => {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+      mediaRecorder.stop();
+      document.getElementById("startButton").disabled = false;
+      document.getElementById("stopButton").disabled = true;
+      console.log("Recording stopped...");
+    }
+  };
+
+  // Send the audio Blob to the WebSocket server
+  //function sendAudioBlob(audioBlob) {
+  //  // Convert the Blob to ArrayBuffer (binary data)
+  //  const reader = new FileReader();
+  //  reader.onloadend = () => {
+  //    const audioData = reader.result;
+  //    if (websocket && websocket.readyState === WebSocket.OPEN) {
+  //            const audioBase64 = btoa(String.fromCharCode.apply(null, audioData)); // Convert audio bytes to base64
+  //            console.log(audioBase64)
+  //            websocket.send(JSON.stringify({
+  //                recorded_audio: audioBase64,
+  //                email: "yashjajo",
+  //                user_id: "1234444444444456",
+  //                session_id: "1",
+  //            }));
+  //            //websocket.send({
+  //            //    recorded_audio: audioData,
+  //            //    email: "yashjajo",
+  //            //    user_id: "1234444444444456",
+  //            //    session_id: "1",
+  //            //});  // Send the binary audio data
+  //            console.log("Audio data sent to WebSocket");
+  //    } else {
+  //      console.error("WebSocket connection is not open.");
+  //    }
+  //  };
+  //  reader.readAsArrayBuffer(audioBlob);
+  //}
+  function sendAudioBlob(audioBlob) {
+    // Input validation
+    if (!(audioBlob instanceof Blob)) {
+        console.error('Invalid input: Expected an audio Blob');
+        return;
+    }
+
+    const reader = new FileReader();
+    
+    reader.onload = function() {
+          try {
+              if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                  console.error('WebSocket connection is not open');
+                  return;
+              }
+
+              const audioData = new Uint8Array(reader.result);
+
+              // Convert to base64 more efficiently using chunks
+              const chunkSize = 8192;
+              const chunks = [];
+
+              for (let i = 0; i < audioData.length; i += chunkSize) {
+                  const chunk = audioData.slice(i, i + chunkSize);
+                  chunks.push(String.fromCharCode.apply(null, chunk));
+              }
+
+              const audioBase64 = btoa(chunks.join(''));
+
+              const payload = {
+                  recorded_audio: audioBase64,
+                  email: "far",
+                  user_id: "820",
+                  session_id: "1"
+              };
+
+              websocket.send(JSON.stringify(payload));
+              console.log("Audio data sent successfully");
+
+          } catch (error) {
+              console.error('Error processing audio:', error);
+          }
+    };
+
+    reader.onerror = function(error) {
+        console.error('Error reading audio blob:', error);
+    };
+
+    // Start reading the blob
+    reader.readAsArrayBuffer(audioBlob);
+}
+
+</script>
+
